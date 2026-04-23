@@ -508,7 +508,151 @@ function ScanTab({onFound, collected}) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   GARAGE TAB — CINEMATIC 3D CAROUSEL
+   CAR MODEL SVG — side-view silhouettes
+═══════════════════════════════════════════════════════════ */
+function WheelSVG({cx,cy,r,spokes=6}) {
+  const ri=r*0.68, rh=r*0.33;
+  return <>
+    <circle cx={cx} cy={cy} r={r}  fill="#181818" stroke="#2c2c2c" strokeWidth="2"/>
+    <circle cx={cx} cy={cy} r={ri} fill="#111"    stroke="#2a2a2a" strokeWidth="1.5"/>
+    <circle cx={cx} cy={cy} r={rh} fill="#1d1d1d" stroke="#333"    strokeWidth="1"/>
+    {Array.from({length:spokes},(_,i)=>{
+      const a=(i/spokes)*Math.PI*2;
+      return <line key={i}
+        x1={cx+Math.cos(a)*rh} y1={cy+Math.sin(a)*rh}
+        x2={cx+Math.cos(a)*(ri-1)} y2={cy+Math.sin(a)*(ri-1)}
+        stroke="#2d2d2d" strokeWidth="2.8" strokeLinecap="round"/>;
+    })}
+  </>;
+}
+
+function CarModel({car,lit}) {
+  const C=car.color, t=car.type;
+  const gf=`rgba(140,200,255,${lit?0.22:0.05})`;
+  const gs=`rgba(255,255,255,${lit?0.18:0.04})`;
+  const HL=lit?"rgba(255,248,200,0.93)":"rgba(55,55,38,0.3)";
+  const TL=lit?"rgba(215,22,22,0.88)":"rgba(65,7,7,0.3)";
+
+  if (t==="Truck") return (
+    <svg viewBox="0 0 300 150" style={{width:'100%',height:'100%',overflow:'visible'}}>
+      {/* cab */}
+      <path d="M22,94 L22,42 L40,20 L150,20 L160,44 L160,94 Z" fill={C}/>
+      <path d="M40,20 L52,8 L138,8 L150,20 Z" fill={C}/>
+      {/* bed */}
+      <rect x="160" y="62" width="110" height="32" fill={C}/>
+      <rect x="158" y="56" width="114" height="8" rx="2" fill={C} opacity="0.7"/>
+      {/* windows */}
+      <path d="M40,20 L52,8 L80,8 L80,20 Z"       fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <rect x="82" y="8" width="30" height="12" rx="1" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M115,8 L115,20 L150,20 L138,8 Z"   fill={gf} stroke={gs} strokeWidth="1.5"/>
+      {/* flared fenders */}
+      <path d="M20,94 Q17,107 37,115 Q63,125 90,115 Q110,107 112,94 Z" fill={C}/>
+      <path d="M178,94 Q175,107 195,115 Q221,125 248,115 Q268,107 270,94 Z" fill={C}/>
+      {/* front bumper */}
+      <path d="M6,70 L22,70 L22,94 L6,98 Z" fill="#252525"/>
+      <rect x="3" y="78" width="20" height="10" rx="2" fill="#2e2e2e"/>
+      {/* rear bumper */}
+      <rect x="268" y="78" width="16" height="18" rx="2" fill="#252525"/>
+      {/* wheels — large Raptor tires */}
+      <WheelSVG cx={66} cy={109} r={29} spokes={7}/>
+      <WheelSVG cx={224} cy={109} r={29} spokes={7}/>
+      {/* lights */}
+      <rect x="10" y="48" width="14" height="16" rx="2" fill={HL}/>
+      <rect x="10" y="66" width="14" height="8"  rx="1" fill={lit?"rgba(255,120,0,0.75)":"rgba(60,30,0,0.3)"}/>
+      <rect x="268" y="66" width="8"  height="22" rx="2" fill={TL}/>
+      {lit&&<ellipse cx="150" cy="142" rx="115" ry="5" fill={C+"44"}/>}
+    </svg>
+  );
+
+  if (t==="SUV") return (
+    <svg viewBox="0 0 300 140" style={{width:'100%',height:'100%',overflow:'visible'}}>
+      <rect x="18" y="50" width="262" height="42" fill={C}/>
+      <rect x="36" y="20" width="212" height="32" rx="4" fill={C} opacity="0.95"/>
+      <path d="M18,50 L18,46 L36,34 L36,50 Z"   fill={C} opacity="0.85"/>
+      <path d="M248,50 L248,36 L280,46 L280,50 Z" fill={C} opacity="0.85"/>
+      <rect x="40" y="23" width="44" height="24" rx="2" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <rect x="90" y="23" width="60" height="24" rx="2" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <rect x="156" y="23" width="54" height="24" rx="2" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M16,92 Q13,104 32,110 Q56,120 80,110 Q100,104 102,92 Z"   fill={C}/>
+      <path d="M196,92 Q193,104 212,110 Q236,120 260,110 Q280,104 282,92 Z" fill={C}/>
+      <WheelSVG cx={60} cy={104} r={24}/>
+      <WheelSVG cx={238} cy={104} r={24}/>
+      <rect x="11" y="52" width="9" height="22" rx="2" fill={HL}/>
+      <rect x="278" y="50" width="8" height="24" rx="2" fill={TL}/>
+      {lit&&<ellipse cx="148" cy="133" rx="112" ry="5" fill={C+"44"}/>}
+    </svg>
+  );
+
+  if (t==="Supercar"||t==="Hypercar") return (
+    <svg viewBox="0 0 300 112" style={{width:'100%',height:'100%',overflow:'visible'}}>
+      <path d="M14,80 L14,62 L284,62 L284,80 Z"    fill={C}/>
+      <path d="M80,62 L108,28 L210,28 L232,62 Z"   fill={C} opacity="0.95"/>
+      <path d="M108,28 L118,18 L206,18 L210,28 Z"  fill={C} opacity="0.9"/>
+      <path d="M14,62 L14,58 L80,48 L80,62 Z"      fill={C} opacity="0.8"/>
+      <path d="M232,62 L232,50 L282,56 L284,62 Z"  fill={C} opacity="0.8"/>
+      <path d="M108,28 L118,18 L136,18 L132,28 Z"  fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <rect x="134" y="18" width="54" height="10" rx="1" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M191,18 L188,28 L210,28 L206,18 Z"  fill={gf} stroke={gs} strokeWidth="1.5"/>
+      {[0,1,2].map(i=><rect key={i} x={150+i*8} y={63} width="3" height="14" rx="1" fill="rgba(0,0,0,0.5)"/>)}
+      <rect x="8"  y="78" width="42" height="3" rx="1" fill="#1e1e1e"/>
+      <rect x="250" y="56" width="36" height="3" rx="1" fill="#1e1e1e"/>
+      <path d="M12,80 Q10,92 28,98 Q50,106 74,98 Q92,92 94,80 Z"    fill={C}/>
+      <path d="M202,80 Q200,92 218,98 Q240,106 264,98 Q282,92 284,80 Z" fill={C}/>
+      <WheelSVG cx={54} cy={92} r={20} spokes={5}/>
+      <WheelSVG cx={242} cy={92} r={20} spokes={5}/>
+      <path d="M8,60 L14,58 L14,68 L8,66 Z" fill={HL}/>
+      <rect x="280" y="58" width="6" height="20" rx="1" fill={TL}/>
+      {lit&&<ellipse cx="148" cy="108" rx="100" ry="4" fill={C+"44"}/>}
+    </svg>
+  );
+
+  if (t==="Muscle") return (
+    <svg viewBox="0 0 300 126" style={{width:'100%',height:'100%',overflow:'visible'}}>
+      <path d="M14,82 L14,58 L284,58 L284,82 Z"    fill={C}/>
+      <path d="M14,58 L14,54 L92,44 L92,58 Z"      fill={C} opacity="0.85"/>
+      <path d="M92,58 L104,26 L222,26 L242,58 Z"   fill={C} opacity="0.95"/>
+      <path d="M104,26 L116,14 L220,14 L222,26 Z"  fill={C} opacity="0.9"/>
+      <path d="M242,58 L242,48 L282,52 L284,58 Z"  fill={C} opacity="0.85"/>
+      <path d="M104,26 L116,14 L136,14 L132,26 Z"  fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <rect x="134" y="14" width="58" height="12" rx="1" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M195,14 L192,26 L222,26 L220,14 Z"  fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M12,82 Q10,96 30,102 Q54,112 78,102 Q98,96 100,82 Z"    fill={C}/>
+      <path d="M196,82 Q194,96 214,102 Q238,112 262,102 Q282,96 284,82 Z" fill={C}/>
+      <WheelSVG cx={58} cy={96} r={22} spokes={5}/>
+      <WheelSVG cx={238} cy={96} r={22} spokes={5}/>
+      <rect x="10" y="56" width="6" height="18" rx="1" fill={HL}/>
+      <rect x="10" y="76" width="6" height="8"  rx="1" fill={lit?"rgba(255,100,0,0.7)":"rgba(55,25,0,0.3)"}/>
+      <rect x="282" y="56" width="6" height="24" rx="1" fill={TL}/>
+      {lit&&<ellipse cx="148" cy="120" rx="110" ry="4" fill={C+"44"}/>}
+    </svg>
+  );
+
+  /* default — sedan/JDM/GT/Electric/Luxury (Cadillac CT5 proportions) */
+  return (
+    <svg viewBox="0 0 300 120" style={{width:'100%',height:'100%',overflow:'visible'}}>
+      <path d="M15,80 L15,60 L283,60 L283,80 Z"    fill={C}/>
+      <path d="M15,60 L15,55 L72,46 L72,60 Z"      fill={C} opacity="0.8"/>
+      <path d="M72,60 L96,24 L222,24 L246,60 Z"    fill={C} opacity="0.95"/>
+      <path d="M96,24 L112,12 L216,12 L222,24 Z"   fill={C} opacity="0.9"/>
+      <path d="M246,60 L246,50 L281,56 L283,60 Z"  fill={C} opacity="0.8"/>
+      <path d="M96,24 L112,12 L132,12 L128,24 Z"   fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <rect x="130" y="12" width="58" height="12" rx="1" fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M191,12 L188,24 L222,24 L216,12 Z"  fill={gf} stroke={gs} strokeWidth="1.5"/>
+      <path d="M13,80 Q11,94 30,100 Q52,110 76,100 Q96,94 98,80 Z"     fill={C}/>
+      <path d="M198,80 Q196,94 216,100 Q238,110 262,100 Q282,94 284,80 Z" fill={C}/>
+      <WheelSVG cx={56} cy={94} r={21}/>
+      <WheelSVG cx={240} cy={94} r={21}/>
+      <path d="M9,58 L15,55 L15,68 L9,66 Z" fill={HL}/>
+      <rect x="280" y="56" width="6" height="22" rx="1" fill={TL}/>
+      {/* Cadillac-style chrome trim line */}
+      <path d="M15,72 L283,72" stroke={lit?"rgba(180,180,180,0.28)":"rgba(50,50,50,0.15)"} strokeWidth="1.5"/>
+      {lit&&<ellipse cx="148" cy="116" rx="108" ry="4" fill={C+"44"}/>}
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GARAGE TAB — GTA POV
 ═══════════════════════════════════════════════════════════ */
 function GarageTab({collected, onSelect}) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -566,12 +710,13 @@ function GarageTab({collected, onSelect}) {
     else                       triggerSnap(activeIndex);
   }
 
+  /* perspective slot positions: active car at front-bottom, others recede */
   const SLOTS = [
-    { rel:-2, x:-290, y:-35, scale:0.45, opacity:0.20, brightness:0.08, sat:0    },
-    { rel:-1, x:-168, y:-18, scale:0.68, opacity:0.50, brightness:0.28, sat:0.15 },
-    { rel: 0, x:   0, y:  0, scale:1.00, opacity:1.00, brightness:1.00, sat:1.0  },
-    { rel: 1, x: 168, y:-18, scale:0.68, opacity:0.50, brightness:0.28, sat:0.15 },
-    { rel: 2, x: 290, y:-35, scale:0.45, opacity:0.20, brightness:0.08, sat:0    },
+    { rel:-2, x:-268, y:-72, w:110, opacity:0.18, brightness:0.07, sat:0    },
+    { rel:-1, x:-162, y:-38, w:175, opacity:0.48, brightness:0.26, sat:0.14 },
+    { rel: 0, x:   0, y:  0, w:295, opacity:1.00, brightness:1.00, sat:1.0  },
+    { rel: 1, x: 162, y:-38, w:175, opacity:0.48, brightness:0.26, sat:0.14 },
+    { rel: 2, x: 268, y:-72, w:110, opacity:0.18, brightness:0.07, sat:0    },
   ];
 
   const activeCar = myCars[activeIndex];
@@ -579,8 +724,8 @@ function GarageTab({collected, onSelect}) {
   if (myCars.length === 0) {
     return (
       <div style={{flex:1,background:'#000',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.88) 100%)',pointerEvents:'none',zIndex:10}}/>
-        <div style={{position:'absolute',bottom:0,left:'-20%',right:'-20%',height:'40%',background:'#0d0d0d',transform:'perspective(500px) rotateX(45deg)',transformOrigin:'bottom center',zIndex:5,borderTop:'1px solid #1c1c1c'}}/>
+        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.9) 100%)',pointerEvents:'none',zIndex:10}}/>
+        <div style={{position:'absolute',bottom:0,left:'-20%',right:'-20%',height:'40%',background:'#0a0a0a',transform:'perspective(500px) rotateX(45deg)',transformOrigin:'bottom center',zIndex:5,borderTop:'1px solid #1a1a1a'}}/>
         <div style={{textAlign:'center',zIndex:20,padding:'0 30px'}}>
           <div style={{fontFamily:'var(--font-d)',fontSize:30,color:'#fff',letterSpacing:3,marginBottom:8}}>YOUR GARAGE IS EMPTY</div>
           <div style={{fontFamily:'var(--font-m)',fontSize:10,color:'#444',marginBottom:28}}>Hit the scanner to collect your first car</div>
@@ -601,22 +746,54 @@ function GarageTab({collected, onSelect}) {
       onTouchMove={e=>{e.preventDefault();handleDragMove(e.touches[0].clientX);}}
       onTouchEnd={handleDragEnd}
     >
-      {/* Vignette */}
-      <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 50%,transparent 28%,rgba(0,0,0,0.84) 100%)',pointerEvents:'none',zIndex:30}}/>
+      {/* ── GARAGE ENVIRONMENT ── */}
 
-      {/* Header */}
-      <div style={{position:'absolute',top:0,left:0,right:0,display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'16px 18px 0',zIndex:40}}>
+      {/* Back wall — horizontal panel lines like a real garage */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',zIndex:2,
+        background:'#060606',
+        backgroundImage:'repeating-linear-gradient(180deg,transparent,transparent 38px,#0e0e0e 38px,#0e0e0e 39px)',
+      }}/>
+
+      {/* Ceiling strip light */}
+      <div style={{position:'absolute',top:0,left:'25%',right:'25%',height:2,zIndex:3,
+        background:'rgba(255,255,255,0.07)',
+        boxShadow:'0 0 30px rgba(255,255,255,0.05),0 0 80px rgba(255,255,255,0.02)',
+      }}/>
+
+      {/* Perspective floor with converging grid lines (VP = top-center) */}
+      <svg style={{position:'absolute',bottom:0,left:0,width:'100%',height:'54%',zIndex:4,pointerEvents:'none'}}
+        viewBox="0 0 375 260" preserveAspectRatio="none">
+        <rect width="375" height="260" fill="#090909"/>
+        {/* Converging lines from VP (187,0) to floor edges */}
+        {[-175,-118,-72,-38,-12,12,38,72,118,175].map((o,i)=>(
+          <line key={i} x1={187} y1={0} x2={187+o} y2={260} stroke="#171717" strokeWidth="0.9"/>
+        ))}
+        {/* Horizontal cross-sections at depth intervals */}
+        {[0.1,0.22,0.36,0.52,0.7,0.88].map(t=>(
+          <line key={t} x1={187*(1-t)} y1={t*260} x2={187+188*t} y2={t*260} stroke="#141414" strokeWidth="0.8"/>
+        ))}
+        {/* Active parking bay — yellow lines */}
+        <line x1={96}  y1={258} x2={130} y2={76} stroke="#1e1800" strokeWidth="2"/>
+        <line x1={279} y1={258} x2={246} y2={76} stroke="#1e1800" strokeWidth="2"/>
+        <polygon points="96,258 130,76 246,76 279,258" fill="#141000" opacity="0.55"/>
+      </svg>
+
+      {/* Vignette */}
+      <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 62%,transparent 22%,rgba(0,0,0,0.8) 100%)',pointerEvents:'none',zIndex:32}}/>
+
+      {/* ── HEADER ── */}
+      <div style={{position:'absolute',top:0,left:0,right:0,display:'flex',justifyContent:'space-between',padding:'16px 18px 0',zIndex:40}}>
         <div>
-          <div style={{fontFamily:'var(--font-m)',fontSize:9,color:'#444',letterSpacing:1}}>GARAGE VALUE</div>
-          <div style={{fontFamily:'var(--font-d)',fontSize:28,color:'#fff',lineHeight:1}}>{fmt(gv)}</div>
+          <div style={{fontFamily:'var(--font-m)',fontSize:9,color:'#363636',letterSpacing:1}}>GARAGE VALUE</div>
+          <div style={{fontFamily:'var(--font-d)',fontSize:26,color:'#fff',lineHeight:1}}>{fmt(gv)}</div>
         </div>
         <div style={{paddingTop:4}}>
-          <div style={{fontFamily:'var(--font-m)',fontSize:11,color:'#444'}}>{collected.size} CARS</div>
+          <div style={{fontFamily:'var(--font-m)',fontSize:11,color:'#363636'}}>{collected.size} CARS</div>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div style={{position:'absolute',top:66,left:0,right:0,zIndex:40,background:'linear-gradient(to bottom,rgba(0,0,0,0.96) 60%,transparent)'}}>
+      {/* ── FILTER BAR ── */}
+      <div style={{position:'absolute',top:62,left:0,right:0,zIndex:40,background:'linear-gradient(to bottom,rgba(0,0,0,0.96) 52%,transparent)'}}>
         <div style={{display:'flex',gap:6,overflowX:'auto',padding:'6px 14px 10px',scrollbarWidth:'none'}}>
           {[
             {label:'All',      active:filterRarity==="All"&&filterSort==="none",    fn:()=>{setFilterRarity("All");setFilterSort("none");setActiveIndex(0);}},
@@ -629,88 +806,79 @@ function GarageTab({collected, onSelect}) {
             {label:'Price ↓',  active:filterSort==="price-desc",                   fn:()=>{setFilterRarity("All");setFilterSort("price-desc");setActiveIndex(0);}},
             {label:'Price ↑',  active:filterSort==="price-asc",                    fn:()=>{setFilterRarity("All");setFilterSort("price-asc");setActiveIndex(0);}},
           ].map(f=>(
-            <button key={f.label} onClick={f.fn} style={{flexShrink:0,background:f.active?'var(--accent)':'rgba(255,255,255,0.06)',border:f.active?'none':'1px solid #222',color:f.active?'#fff':'#555',borderRadius:50,padding:'4px 12px',fontFamily:'var(--font-d)',fontSize:11,cursor:'pointer',letterSpacing:0.5,transition:'all 0.2s',whiteSpace:'nowrap'}}>
+            <button key={f.label} onClick={f.fn} style={{flexShrink:0,background:f.active?'var(--accent)':'rgba(255,255,255,0.05)',border:f.active?'none':'1px solid #1e1e1e',color:f.active?'#fff':'#555',borderRadius:50,padding:'4px 12px',fontFamily:'var(--font-d)',fontSize:11,cursor:'pointer',letterSpacing:0.5,transition:'all 0.2s',whiteSpace:'nowrap'}}>
               {f.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Spotlight cone */}
+      {/* ── SPOTLIGHT ── */}
       <div style={{
         position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',
-        width:240,height:'68%',pointerEvents:'none',zIndex:22,
-        background:`radial-gradient(ellipse at 50% 0%,rgba(255,255,255,${spotlightFlash?0.26:0.08}) 0%,transparent 66%)`,
-        transition:spotlightFlash?'none':'background 0.5s ease',
+        width:270,height:'74%',pointerEvents:'none',zIndex:22,
+        background:`radial-gradient(ellipse at 50% 0%,rgba(255,255,255,${spotlightFlash?0.3:0.1}) 0%,transparent 64%)`,
+        transition:spotlightFlash?'none':'background 0.45s ease',
         animation:spotlightFlash?'none':'spotlight-flicker 2s ease-in-out infinite',
       }}/>
 
-      {/* Concrete floor */}
-      <div style={{
-        position:'absolute',bottom:0,left:'-25%',right:'-25%',height:'44%',
-        background:'#0b0b0b',
-        backgroundImage:'repeating-linear-gradient(90deg,transparent,transparent 49px,#151515 49px,#151515 50px),repeating-linear-gradient(0deg,transparent,transparent 49px,#151515 49px,#151515 50px)',
-        transform:'perspective(650px) rotateX(48deg)',
-        transformOrigin:'bottom center',
-        zIndex:6,
-        borderTop:'1px solid #1a1a1a',
-      }}/>
-
-      {/* Carousel stage */}
-      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',zIndex:20,marginTop:118,marginBottom:130}}>
+      {/* ── CAROUSEL STAGE ── */}
+      <div style={{flex:1,display:'flex',alignItems:'flex-end',justifyContent:'center',position:'relative',zIndex:20,marginTop:108,marginBottom:128,paddingBottom:12}}>
         {SLOTS.map(slot=>{
           const carIdx = activeIndex + slot.rel;
           if (carIdx < 0 || carIdx >= myCars.length) return null;
           const car = myCars[carIdx];
           const isCenter = slot.rel === 0;
+          const xPos = slot.x + (isDragging ? dragOffset : 0);
           return (
             <div
               key={car.id}
               onClick={()=>isCenter && onSelect(car)}
               style={{
                 position:'absolute',
-                transform:`translateX(${slot.x+(isDragging?dragOffset:0)}px) translateY(${slot.y}px) scale(${slot.scale})`,
-                transition:isDragging?'none':'transform 0.32s cubic-bezier(0.34,1.2,0.64,1),opacity 0.32s ease,filter 0.32s ease',
+                bottom: 0,
+                width: slot.w,
+                transform:`translateX(${xPos}px) translateY(${slot.y}px)`,
+                transition:isDragging?'none':'transform 0.34s cubic-bezier(0.34,1.18,0.64,1),opacity 0.3s ease,filter 0.3s ease',
                 opacity:slot.opacity,
                 filter:`brightness(${slot.brightness}) saturate(${slot.sat})`,
                 zIndex:10-Math.abs(slot.rel),
                 cursor:isCenter?'pointer':'default',
-                display:'flex',flexDirection:'column',alignItems:'center',
               }}
             >
-              {isCenter && (
-                <div style={{position:'absolute',bottom:-16,width:130,height:20,background:`radial-gradient(ellipse,${car.color}99,transparent 70%)`,borderRadius:'50%',filter:'blur(5px)'}}/>
-              )}
-              <div style={{
-                fontSize:isCenter?90:74,lineHeight:1,
-                filter:isCenter?`drop-shadow(0 0 24px ${car.color}bb)`:'none',
-                animation:isCenter?'float 3s ease-in-out infinite':'none',
-              }}>
-                {car.emoji}
-              </div>
-              <div style={{width:isCenter?115:80,height:10,background:`radial-gradient(ellipse,${isCenter?car.color+'66':'#2a2a2a'},transparent 70%)`,marginTop:8,borderRadius:'50%'}}/>
+              <CarModel car={car} lit={isCenter && !isDragging}/>
             </div>
           );
         })}
       </div>
 
-      {/* Front car info */}
+      {/* ── FRONT CAR INFO ── */}
       {activeCar && (
         <div style={{
           position:'absolute',bottom:0,left:0,right:0,
-          padding:'18px 24px 32px',zIndex:35,textAlign:'center',
+          padding:'12px 22px 28px',zIndex:35,textAlign:'center',
           opacity:infoVisible?1:0,transition:'opacity 0.3s ease',
-          background:'linear-gradient(to top,rgba(0,0,0,0.97) 60%,transparent)',
+          background:'linear-gradient(to top,rgba(0,0,0,0.98) 50%,transparent)',
           pointerEvents:'none',
         }}>
-          <div style={{fontFamily:'var(--font-d)',fontSize:34,color:'#fff',letterSpacing:2,lineHeight:1,marginBottom:8,textShadow:`0 0 40px ${RC[activeCar.rarity].color}55`}}>
+          <div style={{fontFamily:'var(--font-d)',fontSize:32,color:'#fff',letterSpacing:2,lineHeight:1,marginBottom:6,textShadow:`0 0 40px ${RC[activeCar.rarity].color}55`}}>
             {activeCar.name}
           </div>
-          <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:8,alignItems:'center'}}>
+          <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:6,alignItems:'center'}}>
             <Badge rarity={activeCar.rarity} lg/>
           </div>
-          <div style={{fontFamily:'var(--font-m)',fontSize:13,color:'var(--yellow)',marginBottom:8}}>{fmt(activeCar.msrp)}</div>
+          <div style={{fontFamily:'var(--font-m)',fontSize:13,color:'var(--yellow)',marginBottom:6}}>{fmt(activeCar.msrp)}</div>
           <Stars rarity={activeCar.rarity}/>
+        </div>
+      )}
+
+      {/* ── NAV DOTS ── */}
+      {myCars.length > 1 && (
+        <div style={{position:'absolute',bottom:6,left:0,right:0,display:'flex',justifyContent:'center',gap:4,zIndex:38,pointerEvents:'none'}}>
+          {myCars.slice(0,Math.min(myCars.length,12)).map((_,i)=>(
+            <div key={i} style={{width:i===activeIndex?14:4,height:4,borderRadius:2,background:i===activeIndex?'var(--accent)':'#2a2a2a',transition:'all 0.25s'}}/>
+          ))}
+          {myCars.length>12 && <div style={{fontFamily:'var(--font-m)',fontSize:8,color:'#333',alignSelf:'center'}}>+{myCars.length-12}</div>}
         </div>
       )}
     </div>
