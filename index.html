@@ -679,242 +679,221 @@ function GarageTab({garages, setGarages, activeGarageId, setActiveGarageId, onSe
     setShowDropdown(false);
   }
 
-  function triggerSnap(idx) {
-    const clamped = Math.max(0, Math.min(idx, myCars.length - 1));
+  function selectCar(i) {
+    if (i === activeIndex) { onSelect(myCars[i]); return; }
     setInfoVisible(false);
-    setIsDragging(false);
-    isDraggingRef.current = false;
-    setDragOffset(0);
-    setActiveIndex(clamped);
-    setSpotlightFlash(true);
-    setTimeout(() => setSpotlightFlash(false), 150);
-    setTimeout(() => setInfoVisible(true), 250);
+    setActiveIndex(i);
+    setTimeout(() => setInfoVisible(true), 200);
   }
 
-  function handleDragStart(clientX) {
-    isDraggingRef.current = true;
-    setIsDragging(true);
-    dragStartX.current = clientX;
+  function onSwipeEnd(dx) {
+    if (dx < -55) setActiveIndex(i => Math.min(i + 1, myCars.length - 1));
+    else if (dx > 55) setActiveIndex(i => Math.max(i - 1, 0));
   }
 
-  function handleDragMove(clientX) {
-    if (!isDraggingRef.current) return;
-    setDragOffset((clientX - dragStartX.current) * 0.85);
-  }
-
-  function handleDragEnd() {
-    if (!isDraggingRef.current) return;
-    if      (dragOffset < -80) triggerSnap(activeIndex + 1);
-    else if (dragOffset >  80) triggerSnap(activeIndex - 1);
-    else                       triggerSnap(activeIndex);
-  }
-
-  /* Showroom arc slots — bright GTA style, all cars visible */
-  const SLOTS = [
-    { rel:-4, x:-318, y:-94, w: 76, opacity:0.58, brightness:0.80, sat:0.82 },
-    { rel:-3, x:-242, y:-70, w:100, opacity:0.68, brightness:0.85, sat:0.88 },
-    { rel:-2, x:-174, y:-46, w:132, opacity:0.78, brightness:0.90, sat:0.93 },
-    { rel:-1, x:-110, y:-24, w:172, opacity:0.90, brightness:0.95, sat:0.97 },
-    { rel: 0, x:   0, y:  0, w:258, opacity:1.00, brightness:1.00, sat:1.00 },
-    { rel: 1, x: 110, y:-24, w:172, opacity:0.90, brightness:0.95, sat:0.97 },
-    { rel: 2, x: 174, y:-46, w:132, opacity:0.78, brightness:0.90, sat:0.93 },
-    { rel: 3, x: 242, y:-70, w:100, opacity:0.68, brightness:0.85, sat:0.88 },
-    { rel: 4, x: 318, y:-94, w: 76, opacity:0.58, brightness:0.80, sat:0.82 },
+  /* GTA horseshoe — 8 fixed parking spots, all visible simultaneously
+     cx = center-x in px from left of 375px screen
+     bot = bottom % from container bottom
+     s = scale (smaller = further back)                              */
+  const SPOTS = [
+    {cx: 62,  bot:'46%', s:0.54},  // back-left
+    {cx:148,  bot:'50%', s:0.60},  // back-ctr-left
+    {cx:227,  bot:'50%', s:0.60},  // back-ctr-right
+    {cx:313,  bot:'46%', s:0.54},  // back-right
+    {cx: 28,  bot:'31%', s:0.78},  // mid-left
+    {cx:347,  bot:'31%', s:0.78},  // mid-right
+    {cx:  2,  bot:'14%', s:0.97},  // front-left  (partially off-screen)
+    {cx:373,  bot:'14%', s:0.97},  // front-right (partially off-screen)
   ];
 
-  const activeCar = myCars[activeIndex];
+  const activeCar  = myCars[activeIndex];
+  const W          = 148;   // car container width px
 
-  const sharedWrap = {
-    flex:1, position:'relative', overflow:'hidden',
-    userSelect:'none', touchAction:'none',
-    background:'#d8d8dc',
-  };
-  const dragHandlers = {
-    onMouseDown:e=>handleDragStart(e.clientX),
-    onMouseMove:e=>handleDragMove(e.clientX),
-    onMouseUp:handleDragEnd,
-    onMouseLeave:handleDragEnd,
-    onTouchStart:e=>handleDragStart(e.touches[0].clientX),
-    onTouchMove:e=>{e.preventDefault();handleDragMove(e.touches[0].clientX);},
-    onTouchEnd:handleDragEnd,
-  };
-
-  /* ── DROPDOWN ── */
-  const Dropdown = ()=>(
-    <div style={{position:'absolute',top:12,left:12,zIndex:60}}>
-      <button onClick={()=>setShowDropdown(p=>!p)} style={{
-        background:'rgba(10,10,10,0.84)',color:'#fff',border:'none',
-        borderRadius:8,padding:'8px 13px',fontFamily:'var(--font-d)',fontSize:13,
-        letterSpacing:1,cursor:'pointer',display:'flex',alignItems:'center',gap:6,
-        backdropFilter:'blur(8px)',
-      }}>
-        {activeGarage?.name||"GARAGE 1"}
-        <span style={{fontSize:9,opacity:0.7}}>{showDropdown?'▲':'▾'}</span>
-      </button>
-      {showDropdown && (
-        <div style={{position:'absolute',top:'calc(100% + 5px)',left:0,
-          background:'rgba(8,8,8,0.94)',borderRadius:10,overflow:'hidden',
-          minWidth:190,boxShadow:'0 12px 32px rgba(0,0,0,0.5)',
-          border:'1px solid rgba(255,255,255,0.07)',backdropFilter:'blur(10px)',
-        }}>
-          {garages.map(g=>(
-            <div key={g.id} onClick={()=>{setActiveGarageId(g.id);setShowDropdown(false);}}
-              style={{padding:'11px 14px',background:g.id===activeGarageId?'rgba(255,61,0,0.15)':'transparent',
-                color:g.id===activeGarageId?'var(--accent)':'#bbb',
-                fontFamily:'var(--font-d)',fontSize:13,cursor:'pointer',
-                display:'flex',alignItems:'center',gap:8,
-                borderBottom:'1px solid rgba(255,255,255,0.04)',transition:'background 0.15s',
-              }}>
-              {g.id===activeGarageId&&<span style={{color:'var(--accent)',fontSize:8}}>●</span>}
-              {g.name}
-              <span style={{fontFamily:'var(--font-m)',fontSize:9,color:'#444',marginLeft:'auto'}}>{g.carIds.length}/10</span>
-            </div>
-          ))}
-          {garages.length<10&&(
-            <div onClick={createGarage} style={{padding:'11px 14px',color:'#60A5FA',
-              fontFamily:'var(--font-d)',fontSize:13,cursor:'pointer',
-              display:'flex',alignItems:'center',gap:6,
-            }}>
-              + NEW GARAGE
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  /* ── EMPTY STATE ── */
-  if(myCars.length===0) return (
-    <div style={{...sharedWrap,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-      <Dropdown/>
-      {/* showroom bg even when empty */}
-      <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',background:'linear-gradient(to bottom,#eeeef2,#d8d8dc)',zIndex:1}}/>
-      <svg style={{position:'absolute',bottom:0,left:0,width:'100%',height:'54%',zIndex:2,pointerEvents:'none'}} viewBox="0 0 375 280" preserveAspectRatio="none">
-        <rect width="375" height="280" fill="#c8c8cc"/>
-        {[-155,-95,-52,-20,20,52,95,155].map((o,i)=><line key={i} x1={187} y1={0} x2={187+o} y2={280} stroke="#c0c0c4" strokeWidth="0.8"/>)}
-      </svg>
-      <div style={{textAlign:'center',zIndex:10,padding:'0 30px'}}>
-        <div style={{fontFamily:'var(--font-d)',fontSize:28,color:'#222',letterSpacing:3,marginBottom:6}}>GARAGE IS EMPTY</div>
-        <div style={{fontFamily:'var(--font-m)',fontSize:10,color:'#888',marginBottom:26}}>Scan cars to fill your garage</div>
-        <div style={{width:60,height:60,borderRadius:'50%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto',animation:'pulse-glow 2s infinite'}}>📷</div>
-      </div>
-    </div>
-  );
-
-  /* ── MAIN VIEW ── */
   return (
-    <div style={{...sharedWrap,display:'flex',flexDirection:'column'}} {...dragHandlers}>
-
-      {/* Back wall — light panels */}
-      <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',zIndex:2,
-        background:'linear-gradient(to bottom,#ededf1,#d8d8dc)',
-        backgroundImage:'repeating-linear-gradient(180deg,transparent,transparent 34px,rgba(0,0,0,0.025) 34px,rgba(0,0,0,0.025) 35px)',
+    <div
+      style={{flex:1,position:'relative',overflow:'hidden',background:'#e6e6ea',
+        userSelect:'none',touchAction:'none'}}
+      onMouseDown ={e=>{dragStartX.current=e.clientX;isDraggingRef.current=true;}}
+      onMouseUp   ={e=>{if(isDraggingRef.current){isDraggingRef.current=false;onSwipeEnd(e.clientX-dragStartX.current);}}}
+      onMouseLeave={()=>{isDraggingRef.current=false;}}
+      onTouchStart={e=>{dragStartX.current=e.touches[0].clientX;isDraggingRef.current=true;}}
+      onTouchEnd  ={e=>{if(isDraggingRef.current){isDraggingRef.current=false;onSwipeEnd(e.changedTouches[0].clientX-dragStartX.current);}}}
+    >
+      {/* ── SHOWROOM WALLS ── */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:'54%',zIndex:1,
+        background:'linear-gradient(to bottom,#ffffff 0%,#f0f0f4 50%,#dcdce0 100%)',
+        backgroundImage:'repeating-linear-gradient(180deg,transparent,transparent 44px,rgba(0,0,0,0.018) 44px,rgba(0,0,0,0.018) 45px)',
       }}/>
 
-      {/* Ceiling panel lights */}
-      {[-88,-4,80].map(x=>(
-        <div key={x} style={{position:'absolute',top:0,left:`calc(50% + ${x}px)`,width:68,height:3,zIndex:3,
-          background:'rgba(255,255,255,0.95)',
-          boxShadow:'0 0 18px rgba(255,255,255,0.7),0 0 40px rgba(255,255,255,0.25)',
+      {/* Side walls darkened */}
+      <div style={{position:'absolute',top:0,left:0,bottom:0,width:'14%',zIndex:6,pointerEvents:'none',
+        background:'linear-gradient(to right,rgba(0,0,0,0.32),transparent)'}}/>
+      <div style={{position:'absolute',top:0,right:0,bottom:0,width:'14%',zIndex:6,pointerEvents:'none',
+        background:'linear-gradient(to left,rgba(0,0,0,0.32),transparent)'}}/>
+
+      {/* ── CEILING LIGHTS ── */}
+      {[-80,0,80].map(x=>(
+        <div key={x} style={{position:'absolute',top:0,left:`calc(50% + ${x}px)`,
+          width:56,height:5,zIndex:4,transform:'translateX(-50%)',
+          background:'#fff',
+          boxShadow:'0 0 22px 10px rgba(255,255,255,0.85),0 0 80px 30px rgba(255,255,255,0.25)',
         }}/>
       ))}
-
-      {/* Perspective glossy floor */}
-      <svg style={{position:'absolute',bottom:0,left:0,width:'100%',height:'54%',zIndex:4,pointerEvents:'none'}}
-        viewBox="0 0 375 288" preserveAspectRatio="none">
-        <rect width="375" height="288" fill="#c4c4c8"/>
-        {[-162,-108,-68,-34,-10,10,34,68,108,162].map((o,i)=>(
-          <line key={i} x1={187} y1={0} x2={187+o} y2={288} stroke="#bcbcc0" strokeWidth="0.9"/>
-        ))}
-        {[0.08,0.18,0.32,0.48,0.66,0.84].map(t=>(
-          <line key={t} x1={187*(1-t)} y1={t*288} x2={187+188*t} y2={t*288} stroke="#bababe" strokeWidth="0.8"/>
-        ))}
-        {/* Glossy highlight strips */}
-        {[0.3,0.6,0.85].map(t=>(
-          <line key={t} x1={187*(1-t)} y1={t*288} x2={187+188*t} y2={t*288}
-            stroke="rgba(255,255,255,0.22)" strokeWidth={t*5}/>
-        ))}
-      </svg>
-
-      {/* Soft edge vignette */}
-      <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 55%,transparent 38%,rgba(0,0,0,0.22) 100%)',pointerEvents:'none',zIndex:28}}/>
-
-      {/* ── DROPDOWN ── */}
-      <Dropdown/>
-
-      {/* ── GARAGE VALUE top-right ── */}
-      <div style={{position:'absolute',top:12,right:14,zIndex:50,textAlign:'right'}}>
-        <div style={{fontFamily:'var(--font-m)',fontSize:8,color:'rgba(0,0,0,0.38)',letterSpacing:1}}>GARAGE VALUE</div>
-        <div style={{fontFamily:'var(--font-d)',fontSize:20,color:'#111',lineHeight:1}}>{fmt(gv)}</div>
-        <div style={{fontFamily:'var(--font-m)',fontSize:9,color:'rgba(0,0,0,0.35)'}}>{myCars.length}/10 CARS</div>
-      </div>
-
-      {/* ── SUBTLE SPOTLIGHT on active car ── */}
-      <div style={{
-        position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',
-        width:220,height:'72%',pointerEvents:'none',zIndex:22,
-        background:`radial-gradient(ellipse at 50% 0%,rgba(255,255,255,${spotlightFlash?0.32:0.14}) 0%,transparent 62%)`,
-        transition:spotlightFlash?'none':'background 0.4s ease',
-        animation:spotlightFlash?'none':'spotlight-flicker 3s ease-in-out infinite',
+      {/* Ceiling light glow bleed onto back wall */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:'30%',zIndex:3,pointerEvents:'none',
+        background:'radial-gradient(ellipse at 50% 0%,rgba(255,255,255,0.55) 0%,transparent 70%)',
       }}/>
 
-      {/* ── CAROUSEL STAGE ── */}
-      <div style={{flex:1,display:'flex',alignItems:'flex-end',justifyContent:'center',
-        position:'relative',zIndex:20,marginTop:68,marginBottom:108,paddingBottom:6}}>
-        {SLOTS.map(slot=>{
-          const carIdx=activeIndex+slot.rel;
-          if(carIdx<0||carIdx>=myCars.length) return null;
-          const car=myCars[carIdx];
-          const isCenter=slot.rel===0;
-          return (
-            <div key={car.id} onClick={()=>isCenter&&onSelect(car)} style={{
-              position:'absolute',bottom:0,width:slot.w,
-              transform:`translateX(${slot.x+(isDragging?dragOffset:0)}px) translateY(${slot.y}px)`,
-              transition:isDragging?'none':'transform 0.34s cubic-bezier(0.34,1.18,0.64,1),opacity 0.3s,filter 0.3s',
-              opacity:slot.opacity,
-              filter:`brightness(${slot.brightness}) saturate(${slot.sat})`,
-              zIndex:10-Math.abs(slot.rel),
-              cursor:isCenter?'pointer':'default',
-            }}>
-              <CarModel car={car} lit={isCenter&&!isDragging}/>
-              {/* Floor glow/reflection under active car */}
-              {isCenter&&(
-                <div style={{width:'70%',height:10,margin:'-6px auto 0',
-                  background:`radial-gradient(ellipse,${car.color}44,transparent 70%)`,
-                  borderRadius:'50%',filter:'blur(4px)',
-                }}/>
-              )}
-            </div>
-          );
-        })}
+      {/* ── GLOSSY FLOOR ── */}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:'50%',zIndex:1,
+        background:'linear-gradient(to bottom,#d2d2d6 0%,#c6c6ca 50%,#bebebc 100%)',
+      }}/>
+      <svg style={{position:'absolute',bottom:0,left:0,width:'100%',height:'50%',zIndex:2,pointerEvents:'none'}}
+        viewBox="0 0 375 270" preserveAspectRatio="none">
+        {[-158,-106,-65,-31,-9,9,31,65,106,158].map((o,i)=>(
+          <line key={i} x1={187} y1={0} x2={187+o} y2={270} stroke="rgba(0,0,0,0.045)" strokeWidth="0.9"/>
+        ))}
+        {[0.12,0.28,0.48,0.68,0.88].map(t=>(
+          <line key={t} x1={187*(1-t)} y1={t*270} x2={187+188*t} y2={t*270} stroke="rgba(0,0,0,0.035)" strokeWidth="0.8"/>
+        ))}
+        {/* Gloss reflection bands */}
+        <rect x="0" y="40"  width="375" height="18" fill="rgba(255,255,255,0.16)"/>
+        <rect x="0" y="120" width="375" height="10" fill="rgba(255,255,255,0.10)"/>
+        <rect x="0" y="200" width="375" height="6"  fill="rgba(255,255,255,0.07)"/>
+      </svg>
+
+      {/* Wall-floor seam */}
+      <div style={{position:'absolute',top:'50%',left:0,right:0,height:1,zIndex:5,
+        background:'rgba(0,0,0,0.10)'}}/>
+
+      {/* Vignette */}
+      <div style={{position:'absolute',inset:0,zIndex:7,pointerEvents:'none',
+        background:'radial-gradient(ellipse at 50% 42%,transparent 28%,rgba(0,0,0,0.30) 100%)',
+      }}/>
+
+      {/* ── CARS (horseshoe layout) ── */}
+      {SPOTS.map((pos,i)=>{
+        const car    = myCars[i];
+        const isSel  = i===activeIndex;
+        const left   = pos.cx - W/2;
+        const zDepth = Math.round(pos.s*10);  // closer = higher zIndex
+
+        /* Empty parking bay */
+        if(!car) return (
+          <div key={`empty-${i}`} style={{
+            position:'absolute',left,bottom:pos.bot,width:W,
+            transform:`scale(${pos.s})`,transformOrigin:'bottom center',
+            zIndex:zDepth,opacity:0.15,
+          }}>
+            <svg viewBox="0 0 300 100" style={{width:'100%'}}>
+              <rect x="8" y="8" width="284" height="84" rx="6"
+                fill="none" stroke="#666" strokeWidth="2" strokeDasharray="10,6"/>
+            </svg>
+          </div>
+        );
+
+        return (
+          <div key={car.id} onClick={()=>selectCar(i)} style={{
+            position:'absolute',left,bottom:pos.bot,width:W,
+            transform:`scale(${pos.s})`,transformOrigin:'bottom center',
+            zIndex: isSel ? 30 : zDepth,
+            cursor:'pointer',
+            transition:'filter 0.2s',
+            filter: isSel ? 'none' : 'brightness(0.78) saturate(0.85)',
+          }}>
+            {/* Subtle floor spotlight under selected car */}
+            {isSel && (
+              <div style={{
+                position:'absolute',bottom:-6,left:'8%',right:'8%',height:14,
+                background:`radial-gradient(ellipse,rgba(255,255,200,0.7),transparent 70%)`,
+                borderRadius:'50%',filter:'blur(5px)',
+              }}/>
+            )}
+            {/* Colour glow line under selected */}
+            {isSel && (
+              <div style={{
+                position:'absolute',bottom:-8,left:'20%',right:'20%',height:3,
+                background:`radial-gradient(ellipse,${car.color}bb,transparent 70%)`,
+                borderRadius:2,
+              }}/>
+            )}
+            <CarModel car={car} lit={isSel}/>
+          </div>
+        );
+      })}
+
+      {/* ── GARAGE SELECTOR DROPDOWN ── */}
+      <div style={{position:'absolute',top:10,left:10,zIndex:50}}>
+        <button
+          onClick={e=>{e.stopPropagation();setShowDropdown(p=>!p);}}
+          style={{background:'rgba(0,0,0,0.75)',color:'#fff',border:'none',
+            borderRadius:7,padding:'7px 12px',
+            fontFamily:'var(--font-d)',fontSize:12,letterSpacing:1,
+            cursor:'pointer',display:'flex',alignItems:'center',gap:5,
+            boxShadow:'0 2px 10px rgba(0,0,0,0.3)',
+          }}>
+          {activeGarage?.name||'GARAGE 1'}
+          <span style={{fontSize:8,opacity:0.55}}>{showDropdown?'▲':'▾'}</span>
+        </button>
+        {showDropdown&&(
+          <div style={{position:'absolute',top:'calc(100% + 5px)',left:0,
+            background:'rgba(4,4,4,0.95)',borderRadius:9,overflow:'hidden',
+            minWidth:185,boxShadow:'0 10px 28px rgba(0,0,0,0.6)',
+            border:'1px solid rgba(255,255,255,0.07)',
+          }}>
+            {garages.map(g=>(
+              <div key={g.id}
+                onClick={e=>{e.stopPropagation();setActiveGarageId(g.id);setShowDropdown(false);setActiveIndex(0);}}
+                style={{padding:'10px 13px',
+                  background:g.id===activeGarageId?'rgba(255,61,0,0.15)':'transparent',
+                  color:g.id===activeGarageId?'#FF3D00':'#bbb',
+                  fontFamily:'var(--font-d)',fontSize:12,cursor:'pointer',
+                  display:'flex',alignItems:'center',gap:6,
+                  borderBottom:'1px solid rgba(255,255,255,0.04)',
+                }}>
+                {g.id===activeGarageId&&<span style={{fontSize:7,color:'#FF3D00'}}>●</span>}
+                {g.name}
+                <span style={{marginLeft:'auto',fontFamily:'var(--font-m)',fontSize:9,color:'#444'}}>{g.carIds.length}/10</span>
+              </div>
+            ))}
+            {garages.length<10&&(
+              <div onClick={e=>{e.stopPropagation();createGarage();}}
+                style={{padding:'10px 13px',color:'#60A5FA',
+                  fontFamily:'var(--font-d)',fontSize:12,cursor:'pointer'}}>
+                + NEW GARAGE
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── ACTIVE CAR INFO (bottom) ── */}
+      {/* ── SELECTED CAR INFO — small, bottom ── */}
       {activeCar&&(
         <div style={{
           position:'absolute',bottom:0,left:0,right:0,
-          padding:'10px 22px 24px',zIndex:35,textAlign:'center',
-          opacity:infoVisible?1:0,transition:'opacity 0.3s',
-          background:'linear-gradient(to top,rgba(208,208,212,0.98) 48%,transparent)',
+          padding:'8px 18px 16px',zIndex:35,textAlign:'center',
+          opacity:infoVisible?1:0,transition:'opacity 0.2s',
+          background:'linear-gradient(to top,rgba(180,180,184,0.97) 55%,transparent)',
           pointerEvents:'none',
         }}>
-          <div style={{fontFamily:'var(--font-d)',fontSize:30,color:'#111',letterSpacing:2,lineHeight:1,marginBottom:5}}>
+          <div style={{fontFamily:'var(--font-d)',fontSize:20,color:'#0a0a0a',letterSpacing:1.5,lineHeight:1,marginBottom:4}}>
             {activeCar.name}
           </div>
-          <div style={{display:'flex',justifyContent:'center',gap:8,marginBottom:5,alignItems:'center'}}>
-            <Badge rarity={activeCar.rarity} lg/>
+          <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:10}}>
+            <Badge rarity={activeCar.rarity}/>
+            <span style={{fontFamily:'var(--font-m)',fontSize:11,color:'#333'}}>{fmt(activeCar.msrp)}</span>
           </div>
-          <div style={{fontFamily:'var(--font-m)',fontSize:12,color:'#333',marginBottom:5}}>{fmt(activeCar.msrp)}</div>
-          <Stars rarity={activeCar.rarity}/>
         </div>
       )}
 
       {/* ── NAV DOTS ── */}
       {myCars.length>1&&(
-        <div style={{position:'absolute',bottom:5,left:0,right:0,display:'flex',justifyContent:'center',gap:4,zIndex:38,pointerEvents:'none'}}>
+        <div style={{position:'absolute',bottom:3,left:0,right:0,
+          display:'flex',justifyContent:'center',gap:4,zIndex:36,pointerEvents:'none'}}>
           {myCars.map((_,i)=>(
-            <div key={i} style={{width:i===activeIndex?14:4,height:4,borderRadius:2,
-              background:i===activeIndex?'var(--accent)':'rgba(0,0,0,0.18)',transition:'all 0.25s'}}/>
+            <div key={i} style={{width:i===activeIndex?12:4,height:4,borderRadius:2,
+              background:i===activeIndex?'var(--accent)':'rgba(0,0,0,0.2)',
+              transition:'all 0.25s'}}/>
           ))}
         </div>
       )}
