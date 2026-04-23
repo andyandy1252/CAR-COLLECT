@@ -679,21 +679,6 @@ function GarageTab({garages, setGarages, activeGarageId, setActiveGarageId, onSe
     setShowDropdown(false);
   }
 
-  const myCars = useMemo(() => {
-    let cars = CARS.filter(c => collected.has(c.id));
-    if (filterRarity !== "All") cars = cars.filter(c => c.rarity === filterRarity);
-    if (filterSort === "price-desc") cars = [...cars].sort((a, b) => b.msrp - a.msrp);
-    if (filterSort === "price-asc")  cars = [...cars].sort((a, b) => a.msrp - b.msrp);
-    return cars;
-  }, [collected, filterRarity, filterSort]);
-
-  const gv = garageVal(collected);
-
-  useEffect(() => {
-    if (myCars.length > 0 && activeIndex >= myCars.length)
-      setActiveIndex(myCars.length - 1);
-  }, [myCars.length, activeIndex]);
-
   function triggerSnap(idx) {
     const clamped = Math.max(0, Math.min(idx, myCars.length - 1));
     setInfoVisible(false);
