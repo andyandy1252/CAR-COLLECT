@@ -652,18 +652,32 @@ function CarModel({car,lit}) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   GARAGE TAB — GTA POV
+   GARAGE TAB — GTA SHOWROOM POV
 ═══════════════════════════════════════════════════════════ */
-function GarageTab({collected, onSelect}) {
+function GarageTab({garages, setGarages, activeGarageId, setActiveGarageId, onSelect}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [spotlightFlash, setSpotlightFlash] = useState(false);
   const [infoVisible, setInfoVisible] = useState(true);
-  const [filterRarity, setFilterRarity] = useState("All");
-  const [filterSort, setFilterSort] = useState("none");
+  const [showDropdown, setShowDropdown] = useState(false);
   const isDraggingRef = useRef(false);
   const dragStartX = useRef(0);
+
+  const activeGarage = garages.find(g=>g.id===activeGarageId) || garages[0];
+  const myCars = (activeGarage?.carIds||[]).map(id=>CARS.find(c=>c.id===id)).filter(Boolean);
+  const gv = (activeGarage?.carIds||[]).reduce((s,id)=>{const c=CARS.find(x=>x.id===id);return s+(c?c.msrp:0);},0);
+
+  useEffect(()=>{ setActiveIndex(0); },[activeGarageId]);
+  useEffect(()=>{ if(myCars.length>0&&activeIndex>=myCars.length) setActiveIndex(myCars.length-1); },[myCars.length,activeIndex]);
+
+  function createGarage() {
+    if(garages.length>=10) return;
+    const newId=Math.max(...garages.map(g=>g.id))+1;
+    setGarages(prev=>[...prev,{id:newId,name:`GARAGE ${newId}`,carIds:[]}]);
+    setActiveGarageId(newId);
+    setShowDropdown(false);
+  }
 
   const myCars = useMemo(() => {
     let cars = CARS.filter(c => collected.has(c.id));
@@ -710,175 +724,213 @@ function GarageTab({collected, onSelect}) {
     else                       triggerSnap(activeIndex);
   }
 
-  /* perspective slot positions: active car at front-bottom, others recede */
+  /* Showroom arc slots — bright GTA style, all cars visible */
   const SLOTS = [
-    { rel:-2, x:-268, y:-72, w:110, opacity:0.18, brightness:0.07, sat:0    },
-    { rel:-1, x:-162, y:-38, w:175, opacity:0.48, brightness:0.26, sat:0.14 },
-    { rel: 0, x:   0, y:  0, w:295, opacity:1.00, brightness:1.00, sat:1.0  },
-    { rel: 1, x: 162, y:-38, w:175, opacity:0.48, brightness:0.26, sat:0.14 },
-    { rel: 2, x: 268, y:-72, w:110, opacity:0.18, brightness:0.07, sat:0    },
+    { rel:-4, x:-318, y:-94, w: 76, opacity:0.58, brightness:0.80, sat:0.82 },
+    { rel:-3, x:-242, y:-70, w:100, opacity:0.68, brightness:0.85, sat:0.88 },
+    { rel:-2, x:-174, y:-46, w:132, opacity:0.78, brightness:0.90, sat:0.93 },
+    { rel:-1, x:-110, y:-24, w:172, opacity:0.90, brightness:0.95, sat:0.97 },
+    { rel: 0, x:   0, y:  0, w:258, opacity:1.00, brightness:1.00, sat:1.00 },
+    { rel: 1, x: 110, y:-24, w:172, opacity:0.90, brightness:0.95, sat:0.97 },
+    { rel: 2, x: 174, y:-46, w:132, opacity:0.78, brightness:0.90, sat:0.93 },
+    { rel: 3, x: 242, y:-70, w:100, opacity:0.68, brightness:0.85, sat:0.88 },
+    { rel: 4, x: 318, y:-94, w: 76, opacity:0.58, brightness:0.80, sat:0.82 },
   ];
 
   const activeCar = myCars[activeIndex];
 
-  if (myCars.length === 0) {
-    return (
-      <div style={{flex:1,background:'#000',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.9) 100%)',pointerEvents:'none',zIndex:10}}/>
-        <div style={{position:'absolute',bottom:0,left:'-20%',right:'-20%',height:'40%',background:'#0a0a0a',transform:'perspective(500px) rotateX(45deg)',transformOrigin:'bottom center',zIndex:5,borderTop:'1px solid #1a1a1a'}}/>
-        <div style={{textAlign:'center',zIndex:20,padding:'0 30px'}}>
-          <div style={{fontFamily:'var(--font-d)',fontSize:30,color:'#fff',letterSpacing:3,marginBottom:8}}>YOUR GARAGE IS EMPTY</div>
-          <div style={{fontFamily:'var(--font-m)',fontSize:10,color:'#444',marginBottom:28}}>Hit the scanner to collect your first car</div>
-          <div style={{width:64,height:64,borderRadius:'50%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,margin:'0 auto',animation:'pulse-glow 2s infinite'}}>📷</div>
+  const sharedWrap = {
+    flex:1, position:'relative', overflow:'hidden',
+    userSelect:'none', touchAction:'none',
+    background:'#d8d8dc',
+  };
+  const dragHandlers = {
+    onMouseDown:e=>handleDragStart(e.clientX),
+    onMouseMove:e=>handleDragMove(e.clientX),
+    onMouseUp:handleDragEnd,
+    onMouseLeave:handleDragEnd,
+    onTouchStart:e=>handleDragStart(e.touches[0].clientX),
+    onTouchMove:e=>{e.preventDefault();handleDragMove(e.touches[0].clientX);},
+    onTouchEnd:handleDragEnd,
+  };
+
+  /* ── DROPDOWN ── */
+  const Dropdown = ()=>(
+    <div style={{position:'absolute',top:12,left:12,zIndex:60}}>
+      <button onClick={()=>setShowDropdown(p=>!p)} style={{
+        background:'rgba(10,10,10,0.84)',color:'#fff',border:'none',
+        borderRadius:8,padding:'8px 13px',fontFamily:'var(--font-d)',fontSize:13,
+        letterSpacing:1,cursor:'pointer',display:'flex',alignItems:'center',gap:6,
+        backdropFilter:'blur(8px)',
+      }}>
+        {activeGarage?.name||"GARAGE 1"}
+        <span style={{fontSize:9,opacity:0.7}}>{showDropdown?'▲':'▾'}</span>
+      </button>
+      {showDropdown && (
+        <div style={{position:'absolute',top:'calc(100% + 5px)',left:0,
+          background:'rgba(8,8,8,0.94)',borderRadius:10,overflow:'hidden',
+          minWidth:190,boxShadow:'0 12px 32px rgba(0,0,0,0.5)',
+          border:'1px solid rgba(255,255,255,0.07)',backdropFilter:'blur(10px)',
+        }}>
+          {garages.map(g=>(
+            <div key={g.id} onClick={()=>{setActiveGarageId(g.id);setShowDropdown(false);}}
+              style={{padding:'11px 14px',background:g.id===activeGarageId?'rgba(255,61,0,0.15)':'transparent',
+                color:g.id===activeGarageId?'var(--accent)':'#bbb',
+                fontFamily:'var(--font-d)',fontSize:13,cursor:'pointer',
+                display:'flex',alignItems:'center',gap:8,
+                borderBottom:'1px solid rgba(255,255,255,0.04)',transition:'background 0.15s',
+              }}>
+              {g.id===activeGarageId&&<span style={{color:'var(--accent)',fontSize:8}}>●</span>}
+              {g.name}
+              <span style={{fontFamily:'var(--font-m)',fontSize:9,color:'#444',marginLeft:'auto'}}>{g.carIds.length}/10</span>
+            </div>
+          ))}
+          {garages.length<10&&(
+            <div onClick={createGarage} style={{padding:'11px 14px',color:'#60A5FA',
+              fontFamily:'var(--font-d)',fontSize:13,cursor:'pointer',
+              display:'flex',alignItems:'center',gap:6,
+            }}>
+              + NEW GARAGE
+            </div>
+          )}
         </div>
+      )}
+    </div>
+  );
+
+  /* ── EMPTY STATE ── */
+  if(myCars.length===0) return (
+    <div style={{...sharedWrap,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+      <Dropdown/>
+      {/* showroom bg even when empty */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',background:'linear-gradient(to bottom,#eeeef2,#d8d8dc)',zIndex:1}}/>
+      <svg style={{position:'absolute',bottom:0,left:0,width:'100%',height:'54%',zIndex:2,pointerEvents:'none'}} viewBox="0 0 375 280" preserveAspectRatio="none">
+        <rect width="375" height="280" fill="#c8c8cc"/>
+        {[-155,-95,-52,-20,20,52,95,155].map((o,i)=><line key={i} x1={187} y1={0} x2={187+o} y2={280} stroke="#c0c0c4" strokeWidth="0.8"/>)}
+      </svg>
+      <div style={{textAlign:'center',zIndex:10,padding:'0 30px'}}>
+        <div style={{fontFamily:'var(--font-d)',fontSize:28,color:'#222',letterSpacing:3,marginBottom:6}}>GARAGE IS EMPTY</div>
+        <div style={{fontFamily:'var(--font-m)',fontSize:10,color:'#888',marginBottom:26}}>Scan cars to fill your garage</div>
+        <div style={{width:60,height:60,borderRadius:'50%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,margin:'0 auto',animation:'pulse-glow 2s infinite'}}>📷</div>
       </div>
-    );
-  }
+    </div>
+  );
 
+  /* ── MAIN VIEW ── */
   return (
-    <div
-      style={{flex:1,background:'#000',display:'flex',flexDirection:'column',overflow:'hidden',position:'relative',userSelect:'none',touchAction:'none'}}
-      onMouseDown={e=>handleDragStart(e.clientX)}
-      onMouseMove={e=>handleDragMove(e.clientX)}
-      onMouseUp={handleDragEnd}
-      onMouseLeave={handleDragEnd}
-      onTouchStart={e=>handleDragStart(e.touches[0].clientX)}
-      onTouchMove={e=>{e.preventDefault();handleDragMove(e.touches[0].clientX);}}
-      onTouchEnd={handleDragEnd}
-    >
-      {/* ── GARAGE ENVIRONMENT ── */}
+    <div style={{...sharedWrap,display:'flex',flexDirection:'column'}} {...dragHandlers}>
 
-      {/* Back wall — horizontal panel lines like a real garage */}
+      {/* Back wall — light panels */}
       <div style={{position:'absolute',top:0,left:0,right:0,height:'50%',zIndex:2,
-        background:'#060606',
-        backgroundImage:'repeating-linear-gradient(180deg,transparent,transparent 38px,#0e0e0e 38px,#0e0e0e 39px)',
+        background:'linear-gradient(to bottom,#ededf1,#d8d8dc)',
+        backgroundImage:'repeating-linear-gradient(180deg,transparent,transparent 34px,rgba(0,0,0,0.025) 34px,rgba(0,0,0,0.025) 35px)',
       }}/>
 
-      {/* Ceiling strip light */}
-      <div style={{position:'absolute',top:0,left:'25%',right:'25%',height:2,zIndex:3,
-        background:'rgba(255,255,255,0.07)',
-        boxShadow:'0 0 30px rgba(255,255,255,0.05),0 0 80px rgba(255,255,255,0.02)',
-      }}/>
+      {/* Ceiling panel lights */}
+      {[-88,-4,80].map(x=>(
+        <div key={x} style={{position:'absolute',top:0,left:`calc(50% + ${x}px)`,width:68,height:3,zIndex:3,
+          background:'rgba(255,255,255,0.95)',
+          boxShadow:'0 0 18px rgba(255,255,255,0.7),0 0 40px rgba(255,255,255,0.25)',
+        }}/>
+      ))}
 
-      {/* Perspective floor with converging grid lines (VP = top-center) */}
+      {/* Perspective glossy floor */}
       <svg style={{position:'absolute',bottom:0,left:0,width:'100%',height:'54%',zIndex:4,pointerEvents:'none'}}
-        viewBox="0 0 375 260" preserveAspectRatio="none">
-        <rect width="375" height="260" fill="#090909"/>
-        {/* Converging lines from VP (187,0) to floor edges */}
-        {[-175,-118,-72,-38,-12,12,38,72,118,175].map((o,i)=>(
-          <line key={i} x1={187} y1={0} x2={187+o} y2={260} stroke="#171717" strokeWidth="0.9"/>
+        viewBox="0 0 375 288" preserveAspectRatio="none">
+        <rect width="375" height="288" fill="#c4c4c8"/>
+        {[-162,-108,-68,-34,-10,10,34,68,108,162].map((o,i)=>(
+          <line key={i} x1={187} y1={0} x2={187+o} y2={288} stroke="#bcbcc0" strokeWidth="0.9"/>
         ))}
-        {/* Horizontal cross-sections at depth intervals */}
-        {[0.1,0.22,0.36,0.52,0.7,0.88].map(t=>(
-          <line key={t} x1={187*(1-t)} y1={t*260} x2={187+188*t} y2={t*260} stroke="#141414" strokeWidth="0.8"/>
+        {[0.08,0.18,0.32,0.48,0.66,0.84].map(t=>(
+          <line key={t} x1={187*(1-t)} y1={t*288} x2={187+188*t} y2={t*288} stroke="#bababe" strokeWidth="0.8"/>
         ))}
-        {/* Active parking bay — yellow lines */}
-        <line x1={96}  y1={258} x2={130} y2={76} stroke="#1e1800" strokeWidth="2"/>
-        <line x1={279} y1={258} x2={246} y2={76} stroke="#1e1800" strokeWidth="2"/>
-        <polygon points="96,258 130,76 246,76 279,258" fill="#141000" opacity="0.55"/>
+        {/* Glossy highlight strips */}
+        {[0.3,0.6,0.85].map(t=>(
+          <line key={t} x1={187*(1-t)} y1={t*288} x2={187+188*t} y2={t*288}
+            stroke="rgba(255,255,255,0.22)" strokeWidth={t*5}/>
+        ))}
       </svg>
 
-      {/* Vignette */}
-      <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 62%,transparent 22%,rgba(0,0,0,0.8) 100%)',pointerEvents:'none',zIndex:32}}/>
+      {/* Soft edge vignette */}
+      <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 55%,transparent 38%,rgba(0,0,0,0.22) 100%)',pointerEvents:'none',zIndex:28}}/>
 
-      {/* ── HEADER ── */}
-      <div style={{position:'absolute',top:0,left:0,right:0,display:'flex',justifyContent:'space-between',padding:'16px 18px 0',zIndex:40}}>
-        <div>
-          <div style={{fontFamily:'var(--font-m)',fontSize:9,color:'#363636',letterSpacing:1}}>GARAGE VALUE</div>
-          <div style={{fontFamily:'var(--font-d)',fontSize:26,color:'#fff',lineHeight:1}}>{fmt(gv)}</div>
-        </div>
-        <div style={{paddingTop:4}}>
-          <div style={{fontFamily:'var(--font-m)',fontSize:11,color:'#363636'}}>{collected.size} CARS</div>
-        </div>
+      {/* ── DROPDOWN ── */}
+      <Dropdown/>
+
+      {/* ── GARAGE VALUE top-right ── */}
+      <div style={{position:'absolute',top:12,right:14,zIndex:50,textAlign:'right'}}>
+        <div style={{fontFamily:'var(--font-m)',fontSize:8,color:'rgba(0,0,0,0.38)',letterSpacing:1}}>GARAGE VALUE</div>
+        <div style={{fontFamily:'var(--font-d)',fontSize:20,color:'#111',lineHeight:1}}>{fmt(gv)}</div>
+        <div style={{fontFamily:'var(--font-m)',fontSize:9,color:'rgba(0,0,0,0.35)'}}>{myCars.length}/10 CARS</div>
       </div>
 
-      {/* ── FILTER BAR ── */}
-      <div style={{position:'absolute',top:62,left:0,right:0,zIndex:40,background:'linear-gradient(to bottom,rgba(0,0,0,0.96) 52%,transparent)'}}>
-        <div style={{display:'flex',gap:6,overflowX:'auto',padding:'6px 14px 10px',scrollbarWidth:'none'}}>
-          {[
-            {label:'All',      active:filterRarity==="All"&&filterSort==="none",    fn:()=>{setFilterRarity("All");setFilterSort("none");setActiveIndex(0);}},
-            {label:'COMMON',   active:filterRarity==="common",                      fn:()=>{setFilterRarity("common");setFilterSort("none");setActiveIndex(0);}},
-            {label:'UNCOMMON', active:filterRarity==="uncommon",                    fn:()=>{setFilterRarity("uncommon");setFilterSort("none");setActiveIndex(0);}},
-            {label:'RARE',     active:filterRarity==="rare",                        fn:()=>{setFilterRarity("rare");setFilterSort("none");setActiveIndex(0);}},
-            {label:'EPIC',     active:filterRarity==="epic",                        fn:()=>{setFilterRarity("epic");setFilterSort("none");setActiveIndex(0);}},
-            {label:'LEGENDARY',active:filterRarity==="legendary",                  fn:()=>{setFilterRarity("legendary");setFilterSort("none");setActiveIndex(0);}},
-            {label:'MYTHIC',   active:filterRarity==="mythic",                      fn:()=>{setFilterRarity("mythic");setFilterSort("none");setActiveIndex(0);}},
-            {label:'Price ↓',  active:filterSort==="price-desc",                   fn:()=>{setFilterRarity("All");setFilterSort("price-desc");setActiveIndex(0);}},
-            {label:'Price ↑',  active:filterSort==="price-asc",                    fn:()=>{setFilterRarity("All");setFilterSort("price-asc");setActiveIndex(0);}},
-          ].map(f=>(
-            <button key={f.label} onClick={f.fn} style={{flexShrink:0,background:f.active?'var(--accent)':'rgba(255,255,255,0.05)',border:f.active?'none':'1px solid #1e1e1e',color:f.active?'#fff':'#555',borderRadius:50,padding:'4px 12px',fontFamily:'var(--font-d)',fontSize:11,cursor:'pointer',letterSpacing:0.5,transition:'all 0.2s',whiteSpace:'nowrap'}}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── SPOTLIGHT ── */}
+      {/* ── SUBTLE SPOTLIGHT on active car ── */}
       <div style={{
         position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',
-        width:270,height:'74%',pointerEvents:'none',zIndex:22,
-        background:`radial-gradient(ellipse at 50% 0%,rgba(255,255,255,${spotlightFlash?0.3:0.1}) 0%,transparent 64%)`,
-        transition:spotlightFlash?'none':'background 0.45s ease',
-        animation:spotlightFlash?'none':'spotlight-flicker 2s ease-in-out infinite',
+        width:220,height:'72%',pointerEvents:'none',zIndex:22,
+        background:`radial-gradient(ellipse at 50% 0%,rgba(255,255,255,${spotlightFlash?0.32:0.14}) 0%,transparent 62%)`,
+        transition:spotlightFlash?'none':'background 0.4s ease',
+        animation:spotlightFlash?'none':'spotlight-flicker 3s ease-in-out infinite',
       }}/>
 
       {/* ── CAROUSEL STAGE ── */}
-      <div style={{flex:1,display:'flex',alignItems:'flex-end',justifyContent:'center',position:'relative',zIndex:20,marginTop:108,marginBottom:128,paddingBottom:12}}>
+      <div style={{flex:1,display:'flex',alignItems:'flex-end',justifyContent:'center',
+        position:'relative',zIndex:20,marginTop:68,marginBottom:108,paddingBottom:6}}>
         {SLOTS.map(slot=>{
-          const carIdx = activeIndex + slot.rel;
-          if (carIdx < 0 || carIdx >= myCars.length) return null;
-          const car = myCars[carIdx];
-          const isCenter = slot.rel === 0;
-          const xPos = slot.x + (isDragging ? dragOffset : 0);
+          const carIdx=activeIndex+slot.rel;
+          if(carIdx<0||carIdx>=myCars.length) return null;
+          const car=myCars[carIdx];
+          const isCenter=slot.rel===0;
           return (
-            <div
-              key={car.id}
-              onClick={()=>isCenter && onSelect(car)}
-              style={{
-                position:'absolute',
-                bottom: 0,
-                width: slot.w,
-                transform:`translateX(${xPos}px) translateY(${slot.y}px)`,
-                transition:isDragging?'none':'transform 0.34s cubic-bezier(0.34,1.18,0.64,1),opacity 0.3s ease,filter 0.3s ease',
-                opacity:slot.opacity,
-                filter:`brightness(${slot.brightness}) saturate(${slot.sat})`,
-                zIndex:10-Math.abs(slot.rel),
-                cursor:isCenter?'pointer':'default',
-              }}
-            >
-              <CarModel car={car} lit={isCenter && !isDragging}/>
+            <div key={car.id} onClick={()=>isCenter&&onSelect(car)} style={{
+              position:'absolute',bottom:0,width:slot.w,
+              transform:`translateX(${slot.x+(isDragging?dragOffset:0)}px) translateY(${slot.y}px)`,
+              transition:isDragging?'none':'transform 0.34s cubic-bezier(0.34,1.18,0.64,1),opacity 0.3s,filter 0.3s',
+              opacity:slot.opacity,
+              filter:`brightness(${slot.brightness}) saturate(${slot.sat})`,
+              zIndex:10-Math.abs(slot.rel),
+              cursor:isCenter?'pointer':'default',
+            }}>
+              <CarModel car={car} lit={isCenter&&!isDragging}/>
+              {/* Floor glow/reflection under active car */}
+              {isCenter&&(
+                <div style={{width:'70%',height:10,margin:'-6px auto 0',
+                  background:`radial-gradient(ellipse,${car.color}44,transparent 70%)`,
+                  borderRadius:'50%',filter:'blur(4px)',
+                }}/>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* ── FRONT CAR INFO ── */}
-      {activeCar && (
+      {/* ── ACTIVE CAR INFO (bottom) ── */}
+      {activeCar&&(
         <div style={{
           position:'absolute',bottom:0,left:0,right:0,
-          padding:'12px 22px 28px',zIndex:35,textAlign:'center',
-          opacity:infoVisible?1:0,transition:'opacity 0.3s ease',
-          background:'linear-gradient(to top,rgba(0,0,0,0.98) 50%,transparent)',
+          padding:'10px 22px 24px',zIndex:35,textAlign:'center',
+          opacity:infoVisible?1:0,transition:'opacity 0.3s',
+          background:'linear-gradient(to top,rgba(208,208,212,0.98) 48%,transparent)',
           pointerEvents:'none',
         }}>
-          <div style={{fontFamily:'var(--font-d)',fontSize:32,color:'#fff',letterSpacing:2,lineHeight:1,marginBottom:6,textShadow:`0 0 40px ${RC[activeCar.rarity].color}55`}}>
+          <div style={{fontFamily:'var(--font-d)',fontSize:30,color:'#111',letterSpacing:2,lineHeight:1,marginBottom:5}}>
             {activeCar.name}
           </div>
-          <div style={{display:'flex',justifyContent:'center',gap:10,marginBottom:6,alignItems:'center'}}>
+          <div style={{display:'flex',justifyContent:'center',gap:8,marginBottom:5,alignItems:'center'}}>
             <Badge rarity={activeCar.rarity} lg/>
           </div>
-          <div style={{fontFamily:'var(--font-m)',fontSize:13,color:'var(--yellow)',marginBottom:6}}>{fmt(activeCar.msrp)}</div>
+          <div style={{fontFamily:'var(--font-m)',fontSize:12,color:'#333',marginBottom:5}}>{fmt(activeCar.msrp)}</div>
           <Stars rarity={activeCar.rarity}/>
         </div>
       )}
 
       {/* ── NAV DOTS ── */}
-      {myCars.length > 1 && (
-        <div style={{position:'absolute',bottom:6,left:0,right:0,display:'flex',justifyContent:'center',gap:4,zIndex:38,pointerEvents:'none'}}>
-          {myCars.slice(0,Math.min(myCars.length,12)).map((_,i)=>(
-            <div key={i} style={{width:i===activeIndex?14:4,height:4,borderRadius:2,background:i===activeIndex?'var(--accent)':'#2a2a2a',transition:'all 0.25s'}}/>
+      {myCars.length>1&&(
+        <div style={{position:'absolute',bottom:5,left:0,right:0,display:'flex',justifyContent:'center',gap:4,zIndex:38,pointerEvents:'none'}}>
+          {myCars.map((_,i)=>(
+            <div key={i} style={{width:i===activeIndex?14:4,height:4,borderRadius:2,
+              background:i===activeIndex?'var(--accent)':'rgba(0,0,0,0.18)',transition:'all 0.25s'}}/>
           ))}
-          {myCars.length>12 && <div style={{fontFamily:'var(--font-m)',fontSize:8,color:'#333',alignSelf:'center'}}>+{myCars.length-12}</div>}
         </div>
       )}
     </div>
@@ -988,11 +1040,21 @@ function App() {
   const [collected, setCollected] = useState(new Set(INITIAL));
   const [xp, setXp] = useState(INITIAL.reduce((s,id)=>{const c=CARS.find(x=>x.id===id);return s+(c?RC[c.rarity].xp:0);},0));
   const [modal, setModal] = useState(null);
+  const [garages, setGarages] = useState([{id:1,name:"GARAGE 1",carIds:[...INITIAL]}]);
+  const [activeGarageId, setActiveGarageId] = useState(1);
 
   function onFound(car) {
     if(!collected.has(car.id)) {
       setCollected(p=>new Set([...p,car.id]));
       setXp(p=>p+RC[car.rarity].xp);
+      setGarages(prev=>{
+        const cur=prev.find(g=>g.id===activeGarageId);
+        if(cur&&cur.carIds.length<10) return prev.map(g=>g.id===activeGarageId?{...g,carIds:[...g.carIds,car.id]}:g);
+        const spare=prev.find(g=>g.carIds.length<10);
+        if(spare) return prev.map(g=>g.id===spare.id?{...g,carIds:[...g.carIds,car.id]}:g);
+        const newId=Math.max(...prev.map(g=>g.id))+1;
+        return [...prev,{id:newId,name:`GARAGE ${newId}`,carIds:[car.id]}];
+      });
     }
   }
 
@@ -1010,7 +1072,7 @@ function App() {
         {tab==="map"     && <MapTab/>}
         {tab==="cardex"  && <CardexTab collected={collected} onSelect={setModal}/>}
         {tab==="scan"    && <ScanTab onFound={onFound} collected={collected}/>}
-        {tab==="garage"  && <GarageTab collected={collected} onSelect={setModal}/>}
+        {tab==="garage"  && <GarageTab garages={garages} setGarages={setGarages} activeGarageId={activeGarageId} setActiveGarageId={setActiveGarageId} onSelect={setModal}/>}
         {tab==="profile" && <ProfileTab collected={collected} xp={xp}/>}
       </div>
 
